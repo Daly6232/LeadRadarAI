@@ -1,1 +1,1 @@
-# LeadRadarAI
+LeadRadar AI Phase 2 - Authentication scaffold and dashboard pages.
