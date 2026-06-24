@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LeadRadar AI Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0b1220;
+            color: #e5e7eb;
+        }
+
+        header {
+            padding: 20px;
+            background: #111827;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+
+        .stats {
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .panel {
+            background: #111827;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #1f2937;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .card {
+            background: #0f172a;
+            border: 1px solid #1f2937;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+        }
+
+        .title {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .meta {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 6px;
+            margin-left: 5px;
+        }
+
+        .strong {
+            background: #14532d;
+            color: #22c55e;
+        }
+
+        .weak {
+            background: #7f1d1d;
+            color: #f87171;
+        }
+
+        .actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            font-size: 12px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-blue {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-gray {
+            background: #374151;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>LeadRadar AI</h1>
+    <div class="stats" id="stats">Loading...</div>
+</header>
+
+<div class="container">
+
+    <div class="panel">
+        <h2>🔥 STRONG Leads</h2>
+        <div id="strong"></div>
+    </div>
+
+    <div class="panel">
+        <h2>⚠️ WEAK Leads</h2>
+        <div id="weak"></div>
+    </div>
+
+</div>
+
+<script>
+function openLead(lead) {
+    let msg = `
+Name: ${lead.name}
+City: ${lead.city}
+Phone: ${lead.phone || 'N/A'}
+Website: ${lead.website || 'N/A'}
+`;
+    alert(msg);
+}
+
+async function loadData() {
+    const res = await fetch("/dashboard");
+    const data = await res.json();
+
+    document.getElementById("stats").innerText =
+        `Strong: ${data.stats.strong_count} | Weak: ${data.stats.weak_count}`;
+
+    // STRONG
+document.getElementById("strong").innerHTML =
+    data.strong.map(l => `
+        <div class="card" onclick='openLead(${JSON.stringify(l)})'>
+            <div class="title">
+                ${l.name}
+                <span class="badge strong">STRONG</span>
+            </div>
+
+            <div class="meta">
+                📍 ${l.city || "Unknown"}<br>
+                📞 ${l.phone || "No phone"}<br>
+                🌐 ${l.website
+                    ? `<a href="${l.website}" target="_blank" style="color:#60a5fa">Visit</a>`
+                    : "No website"}
+            </div>
+
+            <div class="actions">
+                ${l.website
+                    ? `<a class="btn btn-blue" href="${l.website}" target="_blank">Open</a>`
+                    : ""}
+            </div>
+        </div>
+    `).join("");
+
+    // WEAK
+document.getElementById("weak").innerHTML =
+    data.weak.map(l => `
+        <div class="card" onclick='openLead(${JSON.stringify(l)})'>
+            <div class="title">
+                ${l.name}
+                <span class="badge weak">WEAK</span>
+            </div>
+
+            <div class="meta">
+                📍 ${l.city || "Unknown"}<br>
+                📞 ${l.phone || "No phone"}<br>
+                🌐 No website detected
+            </div>
+        </div>
+    `).join("");
+}
+
+loadData();
+</script>
+
+</body>
+</html>

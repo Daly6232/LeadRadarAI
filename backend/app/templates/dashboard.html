@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LeadRadar AI Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        .box {
+            width: 50%;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .strong { border-top: 5px solid green; }
+        .weak { border-top: 5px solid red; }
+
+        .item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        button {
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="box strong">
+        <h2>🟢 STRONG LEADS</h2>
+        <button onclick="location.reload()">Scan Again</button>
+
+        {% for lead in strong %}
+        <div class="item">
+            <b>{{ lead.name }}</b><br>
+            🌐 {{ lead.website or "No website" }}<br>
+            📞 {{ lead.phone or "No phone" }}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="box weak">
+        <h2>🔴 WEAK LEADS</h2>
+
+        {% for lead in weak %}
+        <div class="item">
+            <b>{{ lead.name }}</b><br>
+            🌐 {{ lead.website or "No website" }}<br>
+            📞 {{ lead.phone or "No phone" }}
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>
