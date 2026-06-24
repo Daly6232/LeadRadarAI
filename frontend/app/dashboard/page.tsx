@@ -27,7 +27,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getStats().then(setStats).catch(console.error).finally(() => setLoading(false));
+    const fetchStats = async () => {
+      for (let i = 0; i < 3; i++) {
+        try {
+          const data = await api.getStats();
+          setStats(data);
+          setLoading(false);
+          return;
+        } catch {
+          if (i === 2) setLoading(false);
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+    };
+    fetchStats();
   }, []);
 
   return (
