@@ -124,4 +124,3 @@ def delete_lead(lead_id: int, db: Session = Depends(get_db)):
     db.delete(lead)
     db.commit()
     return {"message": "Lead deleted"}
-ENDOFFILE
