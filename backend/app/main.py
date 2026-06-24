@@ -22,7 +22,6 @@ def startup():
     from app.models.user import Base as UserBase
     from app.models.lead import Lead  # Ensures Lead model is registered
 
-    UserBase.metadata.drop_all(bind=engine)
     UserBase.metadata.create_all(bind=engine)
 
 app.include_router(auth_router)
