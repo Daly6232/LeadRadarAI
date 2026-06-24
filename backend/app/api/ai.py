@@ -40,7 +40,7 @@ def ai_stats(db: Session = Depends(get_db)):
     leads = db.query(Lead).all()
 
     total = len(leads)
-    analyzed = len([l for l in leads if l.ai_score is not None])
+    analyzed = len([l for l in leads if l.score is not None])
 
     if analyzed == 0:
         return {
@@ -52,11 +52,11 @@ def ai_stats(db: Session = Depends(get_db)):
 
     high_quality = len([
         l for l in leads
-        if l.ai_score is not None and l.ai_score >= 70
+        if l.score is not None and l.score >= 70
     ])
 
     average_score = round(
-        sum(l.ai_score for l in leads if l.ai_score is not None)
+        sum(l.score for l in leads if l.score is not None)
         / analyzed,
         2
     )
