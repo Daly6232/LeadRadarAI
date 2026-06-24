@@ -105,3 +105,13 @@ def scrape_businesses(category: str, city: str, country: str, limit: int = 20) -
     except Exception as e:
         print(f"[OSM Scraper Error] {e}")
         return []
+
+
+class OSMScraper:
+    def search(self, category: str, city: str, limit: int = 10) -> dict:
+        results = scrape_businesses(category, city, "", limit)
+        strong = [r for r in results if r.get("website")]
+        weak = [r for r in results if not r.get("website")]
+        for r in results:
+            r["name"] = r.pop("business_name", "Unknown")
+        return {"strong": strong, "weak": weak}
