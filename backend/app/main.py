@@ -4,7 +4,7 @@ from app.api.auth import router as auth_router
 from app.api.leads import router as leads_router
 from app.database import engine
 from app.models.user import Base as UserBase
-from app.models.lead import Lead
+from app.models.lead import Lead  # noqa: F401 — must import to register with Base
 
 app = FastAPI(title="LeadRadar AI API", version="2.0.0")
 
