@@ -24,6 +24,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
+UserBase.metadata.drop_all(bind=engine)
     UserBase.metadata.create_all(bind=engine)
 
 app.include_router(auth_router)
