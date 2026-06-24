@@ -1,132 +1,107 @@
-import requests
-import time
-
-
-class OSMScraper:
-    """
-    Stable OSM scraper with automatic Overpass fallback.
-    """
-
-    def __init__(self):
-
-        self.overpass_urls = [
-            "https://overpass-api.de/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter",
-            "https://lz4.overpass-api.de/api/interpreter"
-        ]
-
-        self.headers = {
-            "User-Agent": "LeadRadarAI/1.0",
-            "Accept": "*/*"
-        }
-
-        self.bboxes = {
-            "Tunis": (36.74, 10.14, 36.88, 10.25),
-            "Sfax": (34.71, 10.69, 34.80, 10.78),
-            "Sousse": (35.80, 10.60, 35.88, 10.66),
-        }
-
-    def _query_overpass(self, query):
-
-        last_error = None
-
-        for url in self.overpass_urls:
-
-            for attempt in range(2):
-
-                try:
-                    response = requests.post(
-                        url,
-                        data=query,
-                        headers=self.headers,
-                        timeout=30
-                    )
-
-                    response.raise_for_status()
-
-                    return response.json()
-
-                except Exception as e:
-                    last_error = e
-                    time.sleep(1)
-
-        raise Exception(last_error)
-
-    def search(self, category: str, city: str, limit: int = 10):
-
-        if city not in self.bboxes:
-            return {
-                "error": f"City '{city}' not supported yet",
-                "strong": [],
-                "weak": []
-            }
-
-        south, west, north, east = self.bboxes[city]
-
-        query = f"""
-[out:json][timeout:25];
-(
-  node["amenity"="{category}"]({south},{west},{north},{east});
-  way["amenity"="{category}"]({south},{west},{north},{east});
-  relation["amenity"="{category}"]({south},{west},{north},{east});
-);
-out center;
 """
+OpenStreetMap / Overpass API scraper.
+Free, no API key required.
+"""
+import requests
+from typing import List, Dict
 
-        try:
 
-            data = self._query_overpass(query)
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
-            strong = []
-            weak = []
-
-            seen = set()
-
-            for el in data.get("elements", []):
-
-                tags = el.get("tags", {})
-
-                name = tags.get("name")
-
-                if not name:
-                    continue
-
-                if name in seen:
-                    continue
-
-                seen.add(name)
-
-                business = {
-    "name": name,
-    "category": tags.get("amenity"),
-    "city": city,
-
-    # location
-    "lat": el.get("lat") or el.get("center", {}).get("lat"),
-    "lon": el.get("lon") or el.get("center", {}).get("lon"),
-
-    # contact
-    "website": tags.get("website"),
-    "phone": tags.get("phone"),
-    "email": tags.get("email"),
+OSM_CATEGORY_MAP = {
+    "restaurant": ["amenity=restaurant", "amenity=cafe", "amenity=fast_food"],
+    "dentist": ["amenity=dentist"],
+    "doctor": ["amenity=doctors", "amenity=clinic"],
+    "pharmacy": ["amenity=pharmacy"],
+    "hotel": ["tourism=hotel", "tourism=guest_house"],
+    "gym": ["leisure=fitness_centre", "leisure=sports_centre"],
+    "school": ["amenity=school", "amenity=college"],
+    "lawyer": ["office=lawyer", "office=legal"],
+    "accountant": ["office=accountant"],
+    "supermarket": ["shop=supermarket", "shop=grocery"],
+    "bakery": ["shop=bakery"],
+    "beauty": ["shop=beauty", "shop=hairdresser"],
+    "bank": ["amenity=bank"],
+    "garage": ["shop=car_repair", "amenity=car_rental"],
+    "real_estate": ["office=estate_agent"],
 }
 
-                if business["website"]:
-                    business["digital_status"] = "STRONG"
-                    strong.append(business)
-                else:
-                    business["digital_status"] = "WEAK"
-                    weak.append(business)
 
-            return {
-                "strong": strong[:limit],
-                "weak": weak[:limit]
-            }
+def _build_query(filters: List[str], city: str, country: str, limit: int) -> str:
+    area_query = f'area[name="{city}"][boundary=administrative]->.city;'
+    node_queries = []
+    for f in filters:
+        key, val = f.split("=")
+        node_queries.append(f'node[{key}="{val}"](area.city);')
+        node_queries.append(f'way[{key}="{val}"](area.city);')
+    union = "\n".join(node_queries)
+    return f"""
+[out:json][timeout:25];
+{area_query}
+(
+{union}
+);
+out center {limit};
+"""
 
-        except Exception as e:
 
-            return {
-                "error": str(e),
-                "strong": [],
-                "weak": []
-            }
+def _parse_element(el: dict) -> Dict:
+    tags = el.get("tags", {})
+    lat = el.get("lat") or el.get("center", {}).get("lat")
+    lon = el.get("lon") or el.get("center", {}).get("lon")
+
+    phone = tags.get("phone") or tags.get("contact:phone") or tags.get("contact:mobile")
+    email = tags.get("email") or tags.get("contact:email")
+    website = tags.get("website") or tags.get("contact:website") or tags.get("url")
+    name = tags.get("name") or tags.get("brand") or "Unknown Business"
+    city = tags.get("addr:city") or tags.get("is_in:city", "")
+    country = tags.get("addr:country", "")
+    address_parts = [
+        tags.get("addr:housenumber", ""),
+        tags.get("addr:street", ""),
+        city,
+    ]
+    address = " ".join(p for p in address_parts if p).strip()
+
+    return {
+        "business_name": name,
+        "website": website,
+        "email": email,
+        "phone": phone,
+        "city": city,
+        "country": country,
+        "address": address,
+        "lat": lat,
+        "lon": lon,
+        "source": "openstreetmap",
+    }
+
+
+def scrape_businesses(category: str, city: str, country: str, limit: int = 20) -> List[Dict]:
+    cat_key = category.lower().replace(" ", "_")
+    filters = OSM_CATEGORY_MAP.get(cat_key, [f"name~\"{category}\""])
+
+    query = _build_query(filters, city, country, limit)
+
+    try:
+        resp = requests.post(
+            OVERPASS_URL,
+            data={"data": query},
+            timeout=30,
+            headers={"User-Agent": "LeadRadarAI/1.0"}
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        elements = data.get("elements", [])
+        results = []
+        seen = set()
+        for el in elements:
+            parsed = _parse_element(el)
+            name = parsed["business_name"]
+            if name != "Unknown Business" and name not in seen:
+                seen.add(name)
+                results.append(parsed)
+        return results[:limit]
+    except Exception as e:
+        print(f"[OSM Scraper Error] {e}")
+        return []
